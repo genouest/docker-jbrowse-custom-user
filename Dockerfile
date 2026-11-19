@@ -1,4 +1,10 @@
+FROM mambaorg/micromamba:latest AS micromamba
+
 FROM nginx:1.31.9
+
+COPY --from=micromamba /bin/micromamba /usr/local/bin/micromamba
+ENV MAMBA_ROOT_PREFIX=/opt/conda
+ENV PATH=/opt/conda/bin:$PATH
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -7,13 +13,13 @@ RUN mkdir -p /usr/share/man/man1 /usr/share/man/man7
 RUN apt-get -qq update --fix-missing
 RUN apt-get --no-install-recommends -y install build-essential zlib1g-dev libxml2-dev libexpat-dev postgresql-client libpq-dev libpng-dev wget unzip perl-doc ca-certificates
 
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda2-py27_4.8.3-Linux-x86_64.sh -O ~/miniconda.sh && \
-    /bin/bash ~/miniconda.sh -b -p /conda/ && \
-    rm ~/miniconda.sh
+RUN micromamba create -y -p /conda \
+        --override-channels \
+        -c conda-forge -c bioconda \
+        jbrowse=1.16.11 \
+    && micromamba clean --all --yes
 
-ENV PATH="/conda/bin:${PATH}"
-
-RUN conda install -y --override-channels --channel iuc --channel conda-forge --channel bioconda --channel defaults jbrowse=1.16.11
+RUN ls -lha /conda/opt/jbrowse/
 
 RUN rm -rf /usr/share/nginx/html && ln -s /conda/opt/jbrowse/ /usr/share/nginx/html && \
     ln -s /jbrowse/data /conda/opt/jbrowse/data && \
